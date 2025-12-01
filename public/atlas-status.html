@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusVote - MongoDB Atlas Status</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .success { border-left: 5px solid #4caf50; }
+        .error { border-left: 5px solid #f44336; }
+        .warning { border-left: 5px solid #ff9800; }
+        .loading { border-left: 5px solid #2196f3; }
+        
+        pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #5a67d8; }
+        button:disabled { background: #999; cursor: not-allowed; }
+        
+        .test-section {
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        
+        .result-box {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success-result { background: rgba(76, 175, 80, 0.2); }
+        .error-result { background: rgba(244, 67, 54, 0.2); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗳️ CampusVote - MongoDB Atlas Status</h1>
+        
+        <div id="atlas-status" class="status-card loading">
+            <h3>🔗 MongoDB Atlas Connection</h3>
+            <p>Testing connection...</p>
+        </div>
+
+        <div class="status-card">
+            <h3>🚀 Database Operations</h3>
+            
+            <div class="test-section">
+                <h4>1. Initialize Database</h4>
+                <p>Creates default user accounts in MongoDB Atlas</p>
+                <button onclick="initializeDatabase()">Initialize Database</button>
+                <div id="init-result"></div>
+            </div>
+            
+            <div class="test-section">
+                <h4>2. Test Authentication</h4>
+                <p>Test login with MongoDB Atlas stored credentials</p>
+                <button onclick="testLogin('admin@campusvote.edu', 'admin123')">Test Admin Login</button>
+                <button onclick="testLogin('student@campusvote.edu', 'student123')">Test Student Login</button>
+                <div id="login-result"></div>
+            </div>
+            
+            <div class="test-section">
+                <h4>3. Test Registration</h4>
+                <p>Create a new user account in MongoDB Atlas</p>
+                <button onclick="testRegistration()">Test New User Registration</button>
+                <div id="register-result"></div>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <h3>📋 Connection Diagnostics</h3>
+            <pre id="diagnostics">Loading diagnostics...</pre>
+        </div>
+    </div>
+
+    <script>
+        async function checkAtlasStatus() {
+            try {
+                const response = await fetch('/api/atlas-test');
+                const data = await response.json();
+                
+                const statusCard = document.getElementById('atlas-status');
+                
+                if (data.overall) {
+                    statusCard.className = 'status-card success';
+                    statusCard.innerHTML = `
+                        <h3>✅ MongoDB Atlas Connection: SUCCESS</h3>
+                        <p>Database: ${data.database.database.name}</p>
+                        <p>Collections: ${data.database.database.collections.join(', ') || 'None yet'}</p>
+                        <p>Users in DB: ${data.database.database.userCount}</p>
+                        <p><small>Last updated: ${data.timestamp}</small></p>
+                    `;
+                } else {
+                    statusCard.className = 'status-card error';
+                    statusCard.innerHTML = `
+                        <h3>❌ MongoDB Atlas Connection: FAILED</h3>
+                        <p>Error: ${data.database.error}</p>
+                        <p>Details: ${data.database.details}</p>
+                        <p><small>Issue: ${data.database.specificIssue || 'Unknown'}</small></p>
+                    `;
+                }
+                
+                document.getElementById('diagnostics').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('atlas-status').className = 'status-card error';
+                document.getElementById('atlas-status').innerHTML = `
+                    <h3>❌ Connection Test: FAILED</h3>
+                    <p>Error: ${error.message}</p>
+                `;
+                document.getElementById('diagnostics').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function initializeDatabase() {
+            const resultDiv = document.getElementById('init-result');
+            resultDiv.innerHTML = '<p>Initializing database...</p>';
+            
+            try {
+                const response = await fetch('/api/init-db', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result-box success-result">
+                            <h4>✅ Database Initialized!</h4>
+                            <p>Users created: ${data.usersCreated || 'Already exists'}</p>
+                            <p>Status: ${data.status}</p>
+                            ${data.defaultAccounts ? `
+                                <h5>Default Accounts:</h5>
+                                ${data.defaultAccounts.map(acc => 
+                                    `<p>• ${acc.email} / ${acc.password} (${acc.role})</p>`
+                                ).join('')}
+                            ` : ''}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result-box error-result">
+                            <h4>❌ Database Init Failed</h4>
+                            <p>${data.error}</p>
+                            <p>${data.details}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result-box error-result">
+                        <h4>❌ Network Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testLogin(email, password) {
+            const resultDiv = document.getElementById('login-result');
+            resultDiv.innerHTML = '<p>Testing login...</p>';
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result-box success-result">
+                            <h4>✅ Login Successful!</h4>
+                            <p>User: ${data.user.name} (${data.user.email})</p>
+                            <p>Role: ${data.user.role}</p>
+                            <p>Student ID: ${data.user.studentId}</p>
+                            <p><small>Token: ${data.token.substring(0, 50)}...</small></p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result-box error-result">
+                            <h4>❌ Login Failed</h4>
+                            <p>${data.error}</p>
+                            <p>Type: ${data.type}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result-box error-result">
+                        <h4>❌ Network Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testRegistration() {
+            const resultDiv = document.getElementById('register-result');
+            resultDiv.innerHTML = '<p>Testing registration...</p>';
+            
+            const randomUser = {
+                email: `testuser${Math.floor(Math.random() * 1000)}@campusvote.edu`,
+                password: 'testpass123',
+                action: 'register'
+            };
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(randomUser)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result-box success-result">
+                            <h4>✅ Registration Successful!</h4>
+                            <p>New User: ${data.user.name} (${data.user.email})</p>
+                            <p>Role: ${data.user.role}</p>
+                            <p>Student ID: ${data.user.studentId}</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result-box error-result">
+                            <h4>❌ Registration Failed</h4>
+                            <p>${data.error}</p>
+                            <p>Type: ${data.type}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result-box error-result">
+                        <h4>❌ Network Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load status on page load
+        checkAtlasStatus();
+        
+        // Refresh every 30 seconds
+        setInterval(checkAtlasStatus, 30000);
+    </script>
+</body>
+</html>

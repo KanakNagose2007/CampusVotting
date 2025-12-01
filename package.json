@@ -1,0 +1,36 @@
+{
+  "name": "campusvote",
+  "version": "1.0.0",
+  "description": "A secure online voting system for college campuses",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "build": "cd client && npm install && npm run build",
+    "vercel-build": "cd client && npm install && npm run build",
+    "render-build": "cd server && npm install",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "start": "node server/index.js",
+    "postinstall": "cd server && npm install"
+  },
+  "keywords": [
+    "voting",
+    "campus",
+    "elections",
+    "college",
+    "democracy"
+  ],
+  "author": "CampusVote Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "colors": "^1.4.0",
+    "mongodb": "^6.20.0",
+    "mongoose": "^8.19.1",
+    "nodemailer": "^7.0.9"
+  }
+}

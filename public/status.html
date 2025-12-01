@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusVote API Status</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        h1 { text-align: center; margin-bottom: 30px; }
+        .status-card {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .success { border-left: 5px solid #4CAF50; }
+        .error { border-left: 5px solid #f44336; }
+        .warning { border-left: 5px solid #ff9800; }
+        .loading { border-left: 5px solid #2196F3; }
+        pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .test-accounts {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #5a67d8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗳️ CampusVote API Status</h1>
+        
+        <div id="api-status" class="status-card loading">
+            <h3>📡 API Connection</h3>
+            <p>Testing connection...</p>
+        </div>
+
+        <div id="environment-status" class="status-card">
+            <h3>🔧 Environment Variables</h3>
+            <p id="env-details">Loading...</p>
+        </div>
+
+        <div class="test-accounts">
+            <h3>🧪 Test Accounts (Temporary)</h3>
+            <p><strong>Admin:</strong> admin@campusvote.com / admin123</p>
+            <p><strong>Voter:</strong> voter@test.com / voter123</p>
+            <p><strong>Test:</strong> test@example.com / test123</p>
+        </div>
+
+        <div class="status-card">
+            <h3>🧪 Test Login</h3>
+            <button onclick="testLogin('admin@campusvote.com', 'admin123')">Test Admin Login</button>
+            <button onclick="testLogin('voter@test.com', 'voter123')">Test Voter Login</button>
+            <div id="login-result"></div>
+        </div>
+
+        <div class="status-card">
+            <h3>📋 Raw API Response</h3>
+            <pre id="raw-response">Loading...</pre>
+        </div>
+    </div>
+
+    <script>
+        async function checkAPIStatus() {
+            try {
+                const response = await fetch('/api/simple-health');
+                const data = await response.json();
+                
+                document.getElementById('api-status').className = 'status-card success';
+                document.getElementById('api-status').innerHTML = `
+                    <h3>✅ API Connection: SUCCESS</h3>
+                    <p>${data.message}</p>
+                    <p><small>Last updated: ${data.timestamp}</small></p>
+                `;
+
+                document.getElementById('env-details').innerHTML = `
+                    <p>MongoDB URI: ${data.environment.hasMongoUri ? '✅ Configured' : '❌ Missing'}</p>
+                    <p>SendGrid API Key: ${data.environment.hasSendGridKey ? '✅ Configured' : '❌ Missing'}</p>
+                    <p>JWT Secret: ${data.environment.hasJwtSecret ? '✅ Configured' : '❌ Missing'}</p>
+                    <p>Environment: ${data.environment.nodeEnv}</p>
+                `;
+
+                document.getElementById('raw-response').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('api-status').className = 'status-card error';
+                document.getElementById('api-status').innerHTML = `
+                    <h3>❌ API Connection: FAILED</h3>
+                    <p>Error: ${error.message}</p>
+                `;
+                document.getElementById('raw-response').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function testLogin(email, password) {
+            const resultDiv = document.getElementById('login-result');
+            resultDiv.innerHTML = '<p>Testing login...</p>';
+            
+            try {
+                const response = await fetch('/api/simple-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div style="background: rgba(76, 175, 80, 0.2); padding: 10px; border-radius: 5px; margin: 10px 0;">
+                            <h4>✅ Login Successful!</h4>
+                            <p>Welcome, ${data.user.name} (${data.user.role})</p>
+                            <p><small>Token: ${data.token.substring(0, 30)}...</small></p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div style="background: rgba(244, 67, 54, 0.2); padding: 10px; border-radius: 5px; margin: 10px 0;">
+                            <h4>❌ Login Failed</h4>
+                            <p>${data.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div style="background: rgba(244, 67, 54, 0.2); padding: 10px; border-radius: 5px; margin: 10px 0;">
+                        <h4>❌ Network Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load status on page load
+        checkAPIStatus();
+        
+        // Refresh every 30 seconds
+        setInterval(checkAPIStatus, 30000);
+    </script>
+</body>
+</html>
